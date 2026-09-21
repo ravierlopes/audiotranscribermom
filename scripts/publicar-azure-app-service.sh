@@ -149,9 +149,18 @@ git clone --quiet --depth 1 --branch "$BRANCH" "$REPO" "$TEMP/app"
 
 cd "$TEMP/app"
 
-# O Node do Cloud Shell nem sempre e recente o bastante para o Next 16, e uma
-# versao antiga falha no meio do build com erros que nao apontam a causa.
-# Quando houver nvm por perto, subimos para a versao 22.
+# O Cloud Shell exporta um NODE_ENV proprio. Num build de producao isso e
+# veneno: o React acaba resolvendo para o pacote de desenvolvimento durante a
+# pre-renderizacao e o build morre com "Cannot read properties of null
+# (reading 'useContext')", sem dizer a causa. Um NODE_ENV=production tambem
+# atrapalharia, porque faria o npm pular as dependencias de build.
+# Deixamos a variavel fora e o proprio Next define o valor certo.
+if [ -n "${NODE_ENV:-}" ]; then
+  echo "    ignorando NODE_ENV='$NODE_ENV' herdado do ambiente"
+  unset NODE_ENV
+fi
+
+# O Next 16 precisa de Node 20.9 ou mais novo.
 NODE_MAIOR="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
 if [ "$NODE_MAIOR" -lt 20 ]; then
   echo "    Node $NODE_MAIOR e antigo demais; tentando trocar para a versao 22"
