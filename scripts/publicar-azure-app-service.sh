@@ -148,6 +148,23 @@ trap 'rm -rf "$TEMP"' EXIT
 git clone --quiet --depth 1 --branch "$BRANCH" "$REPO" "$TEMP/app"
 
 cd "$TEMP/app"
+
+# O Node do Cloud Shell nem sempre e recente o bastante para o Next 16, e uma
+# versao antiga falha no meio do build com erros que nao apontam a causa.
+# Quando houver nvm por perto, subimos para a versao 22.
+NODE_MAIOR="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
+if [ "$NODE_MAIOR" -lt 20 ]; then
+  echo "    Node $NODE_MAIOR e antigo demais; tentando trocar para a versao 22"
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$NVM_DIR/nvm.sh"
+    nvm install 22 >/dev/null 2>&1
+    nvm use 22 >/dev/null 2>&1
+  fi
+fi
+echo "    compilando com Node $(node --version)"
+
 npm ci --silent
 npm run build
 
