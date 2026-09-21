@@ -63,9 +63,21 @@ fi
 [ -n "$SENHA_ACESSO" ] || { echo "ERRO: a senha não pode ficar em branco." >&2; exit 1; }
 
 echo
-echo "==> Procurando onde a sua assinatura tem quota disponível"
+# Uma execucao anterior pode ja ter criado o plano. A regiao de um plano nao
+# pode ser alterada depois, entao refazer a busca so produziria erros
+# confusos ate cair de novo na regiao certa.
+REGIAO_EXISTENTE="$(az appservice plan show -g "$GRUPO" -n "$PLANO" \
+  --query location -o tsv 2>/dev/null || true)"
+
 SKU=""
 REGIAO=""
+
+if [ -n "$REGIAO_EXISTENTE" ]; then
+  echo "==> Reaproveitando o plano '$PLANO' que já existe em $REGIAO_EXISTENTE"
+  REGIAO="$REGIAO_EXISTENTE"
+  SKU="$(az appservice plan show -g "$GRUPO" -n "$PLANO" --query sku.name -o tsv)"
+else
+echo "==> Procurando onde a sua assinatura tem quota disponível"
 for CANDIDATO in $CANDIDATOS; do
   TENTA_SKU="${CANDIDATO%%:*}"
   TENTA_REGIAO="${CANDIDATO##*:}"
@@ -85,6 +97,7 @@ for CANDIDATO in $CANDIDATOS; do
     echo "indisponível"
   fi
 done
+fi
 
 if [ -z "$SKU" ]; then
   echo
