@@ -11,7 +11,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { corrigirTermos } from "../contexto.ts";
+import { corrigirTermos, normalizarPreposicoes } from "../contexto.ts";
 
 test("corrige siglas que o reconhecimento de voz separa em palavras", () => {
   assert.equal(
@@ -61,4 +61,54 @@ test("texto sem nada a corrigir volta igual", () => {
 test("cada trecho é corrigido uma vez só", () => {
   // "lei rua net" tem que vencer "rua net", que é a regra mais curta.
   assert.equal(corrigirTermos("a lei rua net"), "a Lei Rouanet");
+});
+
+/**
+ * Os casos abaixo vieram de uma transcrição real feita pela Azure, que
+ * devolveu "São João Del Rey tratando Da Lei Rouanet ... com Aspar".
+ */
+test("corrige as variantes de del-Rei que a Azure produz", () => {
+  assert.equal(
+    corrigirTermos("Estivemos em São João Del Rey."),
+    "Estivemos em São João del-Rei.",
+  );
+  assert.equal(corrigirTermos("em sao joao delrey"), "em São João del-Rei");
+});
+
+test("corrige a sigla mesmo escrita como palavra comum", () => {
+  assert.equal(corrigirTermos("reunião com Aspar"), "reunião com ASPAR");
+});
+
+test("rebaixa preposição capitalizada no meio da frase", () => {
+  assert.equal(
+    normalizarPreposicoes("tratando Da Lei Rouanet e De emenda"),
+    "tratando da Lei Rouanet e de emenda",
+  );
+});
+
+test("mantém a maiúscula da preposição que abre frase", () => {
+  assert.equal(normalizarPreposicoes("Da reunião saiu um acordo."), "Da reunião saiu um acordo.");
+  assert.equal(
+    normalizarPreposicoes("Fomos a Betim. Do museu seguimos para a prefeitura."),
+    "Fomos a Betim. Do museu seguimos para a prefeitura.",
+  );
+});
+
+test("trata quebra de linha como início de frase", () => {
+  assert.equal(
+    normalizarPreposicoes("--- Áudio 1 ---\n\nDa agenda de ontem"),
+    "--- Áudio 1 ---\n\nDa agenda de ontem",
+  );
+});
+
+test("não mexe em palavra que apenas começa com a preposição", () => {
+  assert.equal(normalizarPreposicoes("O Dado e a Dona Maria"), "O Dado e a Dona Maria");
+});
+
+test("reproduz a saída real da Azure já corrigida", () => {
+  const daAzure =
+    "Estivemos em São João Del Rey tratando Da Lei Rouanet e de emenda de bancada com Aspar do Ministério da Cultura.";
+  const esperado =
+    "Estivemos em São João del-Rei tratando da Lei Rouanet e de emenda de bancada com ASPAR do Ministério da Cultura.";
+  assert.equal(normalizarPreposicoes(corrigirTermos(daAzure)), esperado);
 });

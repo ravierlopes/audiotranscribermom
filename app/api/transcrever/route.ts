@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { sessaoValida } from "@/lib/auth";
-import { corrigirTermos } from "@/lib/contexto";
+import { corrigirTermos, normalizarPreposicoes } from "@/lib/contexto";
 import { TAMANHO_MAXIMO_BYTES, formatarTamanho } from "@/lib/limites";
 import { ErroTranscricao, provedorAtivo } from "@/lib/providers";
 
@@ -66,7 +66,9 @@ export async function POST(requisicao: Request) {
   try {
     const resultado = await provedor.transcrever(audio, nomeArquivo);
     return NextResponse.json({
-      texto: corrigirTermos(resultado.texto),
+      // Primeiro os nomes próprios e siglas, depois a capitalização solta
+      // que o reconhecimento deixa no meio das frases.
+      texto: normalizarPreposicoes(corrigirTermos(resultado.texto)),
       duracaoSegundos: resultado.duracaoSegundos,
       provedor: resultado.provedor,
     });

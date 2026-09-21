@@ -188,7 +188,10 @@ export const CORRECOES: Array<[string, string]> = [
 
   // Lugares
   ["sao joao del rei", "São João del-Rei"],
+  ["sao joao del rey", "São João del-Rei"],
+  ["sao joao del-rey", "São João del-Rei"],
   ["sao joao delrei", "São João del-Rei"],
+  ["sao joao delrey", "São João del-Rei"],
   ["sao joao d'el rei", "São João del-Rei"],
   ["belo horizonte", "Belo Horizonte"],
   ["ouro preto", "Ouro Preto"],
@@ -287,4 +290,56 @@ export function corrigirTermos(textoOriginal: string): string {
   }
   resultado += texto.slice(cursor);
   return resultado;
+}
+
+/**
+ * Preposições e contrações que o reconhecimento de voz costuma devolver com
+ * inicial maiúscula no meio da frase ("tratando Da Lei Rouanet").
+ *
+ * Só entram aqui palavras que, em português, ficam minúsculas mesmo dentro de
+ * nomes próprios — "João da Silva", "Ouro Preto do Oeste". Artigos soltos como
+ * "a", "o" e "e" ficam de fora de propósito: podem ser iniciais de nome.
+ */
+const PREPOSICOES = [
+  "da", "de", "do", "das", "dos",
+  "na", "no", "nas", "nos",
+  "em", "com", "ao", "aos", "à", "às",
+  "pela", "pelo", "pelas", "pelos",
+  "sobre", "para", "por",
+];
+
+/**
+ * Rebaixa a inicial das preposições que aparecem no meio de uma frase.
+ *
+ * Preserva a maiúscula quando a palavra realmente abre uma frase. Para saber
+ * isso é preciso olhar para trás pulando os espaços: em ". Da Lei" o caractere
+ * imediatamente anterior é um espaço, e é o ponto mais atrás que manda.
+ * Uma quebra de linha também conta como início de frase, por causa dos
+ * títulos que separam um áudio do outro.
+ */
+export function normalizarPreposicoes(texto: string): string {
+  if (!texto) return texto;
+
+  const alternativas = PREPOSICOES.map(
+    (palavra) => palavra[0].toUpperCase() + palavra.slice(1),
+  ).join("|");
+  const padrao = new RegExp(`\\b(${alternativas})\\b`, "g");
+
+  return texto.replace(padrao, (achado, palavra: string, deslocamento: number) => {
+    let i = deslocamento - 1;
+    let houveQuebraDeLinha = false;
+
+    while (i >= 0 && /\s/.test(texto[i])) {
+      if (texto[i] === "\n") houveQuebraDeLinha = true;
+      i--;
+    }
+
+    const comecoDoTexto = i < 0;
+    const depoisDePontuacao = i >= 0 && /[.!?:;]/.test(texto[i]);
+
+    if (comecoDoTexto || houveQuebraDeLinha || depoisDePontuacao) {
+      return achado;
+    }
+    return palavra.toLowerCase();
+  });
 }
