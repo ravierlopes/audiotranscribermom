@@ -44,24 +44,52 @@ Vercel. Leva uns 20 minutos.
 4. Terminada a criação, abra o recurso e vá em **Chaves e Ponto de Extremidade**.
    Anote a **Chave 1** e o **Ponto de extremidade**.
 
-### Etapa 2 — Publicar na Vercel
+### Etapa 2 — Publicar o site
 
-1. Suba este repositório para o GitHub.
-2. Em [vercel.com](https://vercel.com), clique em **Add New > Project** e importe
-   o repositório. A Vercel reconhece o Next.js sozinho, não mude nada.
+O site pode ficar na Vercel (grátis, mais simples) ou no Azure App Service
+(tudo num lugar só, sem limite de tamanho de arquivo). O serviço de
+transcrição continua na Azure nos dois casos.
+
+#### Opção A — Vercel (recomendada para começar)
+
+1. Entre em [vercel.com](https://vercel.com) com sua conta do GitHub.
+2. **Add New → Project** e importe este repositório.
 3. Antes de clicar em **Deploy**, abra **Environment Variables** e cadastre:
 
    | Nome | Valor |
    | --- | --- |
+   | `AZURE_SPEECH_ENDPOINT` | o endpoint anotado na Etapa 1 |
+   | `AZURE_SPEECH_KEY` | a chave anotada na Etapa 1 |
    | `SENHA_ACESSO` | a senha que ela vai digitar |
-   | `AZURE_SPEECH_KEY` | a Chave 1 anotada na Etapa 1 |
-   | `AZURE_SPEECH_ENDPOINT` | o Ponto de extremidade anotado na Etapa 1 |
 
-4. Clique em **Deploy**. Ao terminar, a Vercel te dá o link — é esse link que
-   você manda para ela.
+   Não cadastre `TAMANHO_MAXIMO_MB` aqui: na Vercel o teto é da plataforma,
+   e o padrão de 4 MB é justamente o que cabe.
 
-Sugestão: peça para ela abrir o link e salvar na tela inicial do celular
-(**Adicionar à tela de início**). Vira um ícone, como se fosse um aplicativo.
+4. **Deploy**. Ao terminar, a Vercel te dá o link.
+
+Se o código não estiver na branch padrão do repositório, ajuste em
+**Settings → Git → Production Branch**.
+
+#### Opção B — Azure App Service
+
+```bash
+git clone --depth 1 -b <branch> <url-do-repo> /tmp/app
+bash /tmp/app/scripts/publicar-azure-app-service.sh
+```
+
+O script encontra o serviço de Fala já criado, reaproveita endpoint e chave,
+cria o site e publica.
+
+**Atenção à cota:** assinaturas do tipo Visual Studio costumam vir com cota
+zero para App Service, e a criação do plano falha com *"Operation cannot be
+completed without additional quota"*. A cota é concedida por SKU e por região,
+então o script testa várias combinações antes de desistir. Se nenhuma passar,
+peça aumento no portal (*Ajuda + Suporte → Nova solicitação → Limites de
+serviço e assinatura*) ou use a Vercel.
+
+A vantagem do App Service é não ter o teto de 4 MB por arquivo — lá o script
+já configura `TAMANHO_MAXIMO_MB=25`, o que cobre cerca de 1h40 de áudio do
+WhatsApp por arquivo.
 
 ---
 
@@ -138,11 +166,15 @@ Não precisa mexer em mais nada.
 
 ## Limites
 
-- **4 MB por arquivo.** É o teto de uma requisição na Vercel. Em áudio do
-  WhatsApp isso equivale a mais ou menos 17 minutos de fala por arquivo.
-- **10 áudios por envio.**
-- **60 segundos de processamento por áudio** no plano Hobby da Vercel. Áudios de
-  1 a 3 minutos transcrevem em poucos segundos, bem dentro do limite.
+| | Vercel | Azure App Service |
+| --- | --- | --- |
+| Tamanho por arquivo | 4 MB (~17 min de WhatsApp) | 25 MB (~1h40), ajustável |
+| Tempo por transcrição | 60s (plano Hobby) | sem limite prático |
+| Custo da hospedagem | grátis | ~US$ 13/mês (plano B1) |
+
+Em ambos: **10 áudios por envio**. Áudios de 1 a 3 minutos, que são o caso
+real, transcrevem em poucos segundos e ficam longe de qualquer um desses
+limites.
 
 ---
 

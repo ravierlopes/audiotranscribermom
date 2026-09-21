@@ -48,7 +48,10 @@ echo "    usando: $NOME_FALA"
 # Em vez de fixar um que pode sumir, perguntamos qual existe hoje.
 echo
 echo "==> Descobrindo a versão de Node disponível"
-RUNTIME="$(az webapp list-runtimes --os linux -o tsv | grep -i '^NODE' | sort -Vr | head -1)"
+# O -o tsv devolve a linha inteira da tabela (nome, data de fim de suporte,
+# SO...), entao ficamos so com a primeira coluna.
+RUNTIME="$(az webapp list-runtimes --os linux -o tsv \
+  | awk '{print $1}' | grep -i '^NODE' | sort -Vr | head -1)"
 [ -n "$RUNTIME" ] || { echo "ERRO: não achei runtime de Node." >&2; exit 1; }
 echo "    usando: $RUNTIME"
 
